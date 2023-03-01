@@ -36,9 +36,9 @@ func Read(r io.Reader, sep string) (*Table, error) {
 	// Read header
 	header, err := nextLine(input)
 	if err != nil {
-		return nil, lineError{line, err}
+		return nil, err
 	} else if len(header) < 2 {
-		return nil, lineError{line, errEmptyTable}
+		return nil, errEmptyTable
 	}
 
 	// Read rows
