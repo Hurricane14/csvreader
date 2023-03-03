@@ -2,6 +2,7 @@ package teval
 
 import (
 	"fmt"
+	"strconv"
 )
 
 type cellReference struct {
@@ -39,7 +40,7 @@ func (i integer) Eval(_ lookupFunc, _ map[cellReference]struct{}) (int, error) {
 }
 
 func (i integer) String() string {
-	return fmt.Sprint(int(i))
+	return strconv.Itoa(int(i))
 }
 
 type binary struct {
@@ -91,7 +92,7 @@ func (b *binary) Eval(lookup lookupFunc, visited map[cellReference]struct{}) (in
 
 func (b *binary) String() string {
 	if b.evaluated {
-		return fmt.Sprint(b.value)
+		return strconv.Itoa(b.value)
 	}
 	return fmt.Sprintf("=%s%c%s", b.left, b.op, b.right)
 }
