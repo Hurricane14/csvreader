@@ -37,38 +37,40 @@ func parseArgument(s string) (expr, error) {
 
 // Parses "= arg1 op arg2"
 func parseBinary(s string) (expr, error) {
-	var (
-		args []string
-		op   rune
-		ops  = []rune{'+', '-', '*', '/'}
-	)
+	const ops = "+-*/"
 
 	if !strings.HasPrefix(s, "=") {
 		return nil, errBadExpression
 	}
 	s = s[1:]
 
-	for i := 0; i < len(ops); i++ {
-		op = ops[i]
-		args = strings.Split(s, string(op))
-		if len(args) == 2 {
-			break
-		}
-	}
-	if len(args) != 2 {
+	opInd := strings.IndexAny(s, ops)
+	if opInd < 0 || opInd == len(s) {
 		return nil, errBadExpression
 	}
+	/*
+		for i := 0; i < len(ops); i++ {
+			op = ops[i]
+			args = strings.Split(s, string(op))
+			if len(args) == 2 {
+				break
+			}
+		}
+		if len(args) != 2 {
+			return nil, errBadExpression
+		}
+	*/
 
-	arg1, err := parseArgument(args[0])
+	arg1, err := parseArgument(s[:opInd])
 	if err != nil {
 		return nil, err
 	}
-	arg2, err := parseArgument(args[1])
+	arg2, err := parseArgument(s[opInd+1:])
 	if err != nil {
 		return nil, err
 	}
 	return &binary{
-		op:   op,
+		op:   rune(s[opInd]),
 		left: arg1, right: arg2,
 	}, nil
 }
