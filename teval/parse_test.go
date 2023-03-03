@@ -86,3 +86,15 @@ func TestParseBinary(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkParseBinaryWithCellReferences(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = parseBinary("=Cell1/Cell2")
+	}
+}
+
+func BenchmarkParseBinaryWithValues(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = parseBinary("=20000000/1000")
+	}
+}
