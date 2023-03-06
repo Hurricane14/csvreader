@@ -24,12 +24,3 @@ type cellError struct {
 func (e cellError) Error() string {
 	return fmt.Sprintf("cell %s%d: %v", e.col, e.row, e.err)
 }
-
-type lineError struct {
-	line int
-	err  error
-}
-
-func (e lineError) Error() string {
-	return fmt.Sprintf("line %d: %v", e.line, e.err)
-}

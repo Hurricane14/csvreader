@@ -7,14 +7,16 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"unicode/utf8"
 )
 
 func main() {
-	sep := flag.String("s", ",", "change separator")
+	sepString := flag.String("s", ",", "change separator")
 	shouldEvaluate := flag.Bool("e", false, "evaluate table")
 	cpuProfile := flag.String("cpuprofile", "", "write cpu profile to file")
 	memProfile := flag.String("memprofile", "", "write memory profile to file")
 	flag.Parse()
+	sep, _ := utf8.DecodeRuneInString(*sepString)
 	if flag.NArg() < 1 {
 		exit(fmt.Errorf("usage: csvreader *filename*"))
 	}
@@ -40,7 +42,7 @@ func main() {
 	}
 	defer file.Close()
 
-	table, err := teval.Read(file, *sep)
+	table, err := teval.Read(file, sep)
 	if err != nil {
 		exit(err)
 	}
@@ -64,7 +66,7 @@ func main() {
 		}
 	}
 
-	if err := teval.Write(os.Stdout, table, *sep); err != nil {
+	if err := teval.Write(os.Stdout, table, sep); err != nil {
 		exit(err)
 	}
 }

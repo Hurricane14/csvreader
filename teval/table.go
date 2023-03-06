@@ -1,17 +1,17 @@
 package teval
 
 import (
-	"bufio"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 )
 
 // Table represents a matrix of expressions
 // with assosiated header and row indexes
 type Table struct {
+	header      []string
 	columnNames []string
 	rowIndexes  []int
 	cells       [][]expr
@@ -19,22 +19,12 @@ type Table struct {
 }
 
 // Read table of specified format
-func Read(r io.Reader, sep string) (*Table, error) {
-	var line int
-	nextLine := func(input *bufio.Scanner) ([]string, error) {
-		if !input.Scan() {
-			if err := input.Err(); err != nil {
-				return nil, err
-			}
-			return nil, io.EOF
-		}
-		line++
-		return strings.Split(input.Text(), sep), nil
-	}
-	input := bufio.NewScanner(r)
+func Read(r io.Reader, sep rune) (*Table, error) {
+	input := csv.NewReader(r)
+	input.Comma = sep
 
 	// Read header
-	header, err := nextLine(input)
+	header, err := input.Read()
 	if err != nil {
 		return nil, err
 	} else if len(header) < 2 {
@@ -44,31 +34,28 @@ func Read(r io.Reader, sep string) (*Table, error) {
 	// Read rows
 	rows := [][]string{}
 	for {
-		row, err := nextLine(input)
+		row, err := input.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, lineError{line, err}
-		}
-		if len(row) != len(header) {
-			return nil, lineError{line, fmt.Errorf("mismatched number of columns")}
+			return nil, err
 		}
 		rows = append(rows, row)
 	}
 	if len(rows) == 0 {
-		return nil, lineError{line, errEmptyTable}
+		return nil, errEmptyTable
 	}
 
 	// Remove empty cell from header
-	header = header[1:]
+	columns := header[1:]
 
 	// Convert row indexes to numbers
 	rowIndexes := make([]int, 0, len(rows))
-	for _, row := range rows {
+	for line, row := range rows {
 		ind, err := strconv.Atoi(row[0])
 		if err != nil {
-			return nil, lineError{line, fmt.Errorf("row index is not a number")}
+			return nil, &csv.ParseError{StartLine: 1, Line: line + 1, Err: errBadColumnIndex}
 		}
 		rowIndexes = append(rowIndexes, ind)
 	}
@@ -81,12 +68,12 @@ func Read(r io.Reader, sep string) (*Table, error) {
 
 	// Parse expressions
 	parseErrs := []error{}
-	expressions := make([]expr, 0, len(rows)*len(header))
+	expressions := make([]expr, 0, len(rows)*len(columns))
 	for i, row := range rows {
 		for column, cell := range row[1:] {
 			expr, err := parseExpression(cell)
 			if err != nil {
-				parseErrs = append(parseErrs, cellError{header[column], rowIndexes[i], err})
+				parseErrs = append(parseErrs, cellError{columns[column], rowIndexes[i], err})
 			}
 			if len(parseErrs) > 10 {
 				parseErrs = append(parseErrs, fmt.Errorf("too many parsing errors, parsing stopped..."))
@@ -99,14 +86,15 @@ func Read(r io.Reader, sep string) (*Table, error) {
 		return nil, errors.Join(parseErrs...)
 	}
 
-	headerLen := len(header)
+	headerLen := len(columns)
 	cells := make([][]expr, len(rows))
 	for row := 0; row < len(rows); row++ {
 		cells[row] = expressions[row*headerLen : (row+1)*headerLen]
 	}
 
 	return &Table{
-		columnNames: header,
+		header:      header,
+		columnNames: columns,
 		rowIndexes:  rowIndexes,
 		cells:       cells,
 		rowLookUp:   rowLookUp,
@@ -158,33 +146,27 @@ func (t *Table) EvalAll() error {
 
 // Writes table in the specified format using sep as separator
 // If table was evaluated, results of evaluation are used instead of expressions
-func Write(w io.Writer, t *Table, sep string) error {
-	var err error
-	bw := bufio.NewWriter(w)
+func Write(w io.Writer, t *Table, sep rune) error {
+	writer := csv.NewWriter(w)
+	writer.Comma = sep
 
 	// Write header
-	_, err = fmt.Fprintf(bw, "%s%s\n", sep, strings.Join(t.columnNames, sep))
-	if err != nil {
+	if err := writer.Write(t.header); err != nil {
 		return err
 	}
 
 	// Write rows
-	expr := make([]string, len(t.columnNames))
+	expr := make([]string, len(t.header))
 	for i, row := range t.cells {
+		expr[0] = strconv.Itoa(t.rowIndexes[i])
 		for j, cell := range row {
-			expr[j] = cell.String()
+			expr[j+1] = cell.String()
 		}
 
-		format := "%d%s%s\n"
-		if i == len(t.cells)-1 {
-			format = format[:len(format)-1]
-		}
-
-		_, err := fmt.Fprintf(bw, format, t.rowIndexes[i], sep, strings.Join(expr, sep))
-		if err != nil {
+		if err := writer.Write(expr); err != nil {
 			return err
 		}
 	}
-
-	return bw.Flush()
+	writer.Flush()
+	return writer.Error()
 }
