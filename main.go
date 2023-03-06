@@ -11,17 +11,19 @@ import (
 )
 
 func main() {
-	sepString := flag.String("s", ",", "change separator")
-	shouldEvaluate := flag.Bool("e", false, "evaluate table")
-	cpuProfile := flag.String("cpuprofile", "", "write cpu profile to file")
-	memProfile := flag.String("memprofile", "", "write memory profile to file")
+	var (
+		sep            rune
+		sepString      = flag.String("s", ",", "change separator")
+		shouldEvaluate = flag.Bool("e", false, "evaluate table")
+		cpuProfile     = flag.String("cpuprofile", "", "write cpu profile to file")
+		memProfile     = flag.String("memprofile", "", "write memory profile to file")
+	)
 	flag.Parse()
-	sep, _ := utf8.DecodeRuneInString(*sepString)
+	sep, _ = utf8.DecodeRuneInString(*sepString)
 	if flag.NArg() < 1 {
 		exit(fmt.Errorf("usage: csvreader *filename*"))
 	}
 
-	// Start profiling
 	if *cpuProfile != "" {
 		file, err := os.Create(*cpuProfile)
 		if err != nil {
